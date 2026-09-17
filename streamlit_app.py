@@ -27,13 +27,14 @@ import forecasting
 import api_services
 import auth
 import cloud_storage
+import unidades_saude
 
-# Configuração Global da Página Streamlit
+# Configuração Global da Página Streamlit (Otimizada para Celular e Telas Grandes)
 st.set_page_config(
     page_title="Inteligência Epidemiológica & Entomológica | Itaporã-MS",
     page_icon="🦟",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Carregamento de variáveis de ambiente (.env)
@@ -49,39 +50,105 @@ if os.path.exists(_env_path):
 DEFAULT_MAPS_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyDoqwDBVxGLuy8HU75MPGqLWu9cWw4mjjw")
 
 # ==============================================================================
-# CSS MODERNO: TEMA ESCURO DE ALTA DEFINIÇÃO, TIPOGRAFIA TECH & DESIGN PREMIUM
+# CSS MODERNO: FUNDO PRETO PURO (OLED BLACK), ULTRA-RESPONSIVO PARA CELULAR
 # ==============================================================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    html, body, [class*="css"], .stMarkdown, p, span, label {
+    /* =========================================================================
+       TRAVAMENTO TOTAL DO FUNDO PRETO PURO (OLED #000000 - ZERO FUNDO CLARO)
+       Elimina qualquer possibilidade de fundo branco ou texto invisível
+       ========================================================================= */
+    :root {
+        color-scheme: dark !important;
+        --background-color: #000000 !important;
+        --secondary-background-color: #09090B !important;
+        --text-color: #FFFFFF !important;
+    }
+
+    html, body, 
+    .stApp, 
+    .stApp.light, 
+    .stApp[data-theme="light"], 
+    [data-theme="light"], 
+    [data-testid="stAppViewContainer"], 
+    [data-testid="stHeader"], 
+    [data-testid="stBottom"],
+    .main,
+    section.main {
+        background-color: #000000 !important;
+        background: #000000 !important;
+        color: #FFFFFF !important;
+        color-scheme: dark !important;
+    }
+
+    /* Barra Lateral (Sidebar) em Preto Ônix */
+    section[data-testid="stSidebar"], [data-testid="stSidebar"] > div, [data-testid="stSidebarContent"] {
+        background-color: #09090B !important;
+        background: #09090B !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #FFFFFF !important;
+    }
+
+    /* FORÇAR VISIBILIDADE MÁXIMA DE TODOS OS TEXTOS E PARÁGRAFOS */
+    p, span, label, div, li, a {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        color: #F1F5F9;
+        color: #FFFFFF !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Outfit', sans-serif !important;
         letter-spacing: -0.025em;
-        color: #FFFFFF;
+        color: #FFFFFF !important;
+    }
+
+    /* Forçar inputs, selects, multiselects e caixas de texto no modo escuro */
+    .stSelectbox div[data-baseweb="select"],
+    .stMultiSelect div[data-baseweb="select"],
+    .stTextInput input,
+    .stDateInput input {
+        background-color: #141418 !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255, 255, 255, 0.18) !important;
+    }
+
+    /* Menus Dropdown Suspensa */
+    ul[data-baseweb="menu"], [data-baseweb="popover"] {
+        background-color: #141418 !important;
+        color: #FFFFFF !important;
+    }
+    li[data-baseweb="menu-item"] {
+        background-color: #141418 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Expander / Acordeões */
+    [data-testid="stExpander"] {
+        background-color: #0D0D11 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 12px !important;
     }
 
     .block-container {
-        padding-top: 1.2rem;
+        padding-top: 1rem;
         padding-bottom: 2.5rem;
-        padding-left: 2rem;
-        padding-right: 2rem;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
         max-width: 98% !important;
     }
 
-    /* Cabeçalho Tecnológico (Hero Banner) */
+    /* Cabeçalho Tecnológico (Hero Banner) - Preto Ônix */
     .main-header {
-        background: linear-gradient(135deg, #0B1120 0%, #111827 50%, #1E1B4B 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(135deg, #09090B 0%, #111114 50%, #18181B 100%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 16px;
         padding: 1.4rem 2rem;
         margin-bottom: 1.2rem;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.8);
     }
     .main-header h1 {
         font-size: 2.05rem;
@@ -93,28 +160,28 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
     }
     .main-header p {
-        color: #94A3B8;
+        color: #A1A1AA;
         font-size: 0.95rem;
         font-weight: 500;
         margin-top: 0.3rem;
         margin-bottom: 0;
     }
 
-    /* Cards de Métricas e Indicadores (Dark High-Tech) */
+    /* Cards de Métricas e Indicadores (Fundo Preto com Borda Fina de Alto Contraste) */
     .kpi-card {
-        background: #111827;
+        background: #0D0D11;
         border-radius: 14px;
         padding: 1.2rem 1.4rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-left: 5px solid #3B82F6;
-        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.7);
         margin-bottom: 0.8rem;
         transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .kpi-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.6);
-        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.9);
+        border-color: rgba(255, 255, 255, 0.25);
     }
     .kpi-card.red { border-left-color: #EF4444; }
     .kpi-card.orange { border-left-color: #F97316; }
@@ -125,7 +192,7 @@ st.markdown("""
 
     .kpi-title {
         font-family: 'Space Grotesk', sans-serif;
-        color: #94A3B8;
+        color: #A1A1AA;
         font-size: 0.8rem;
         font-weight: 700;
         text-transform: uppercase;
@@ -133,7 +200,7 @@ st.markdown("""
     }
     .kpi-value {
         font-family: 'Outfit', sans-serif;
-        color: #F8FAFC;
+        color: #FFFFFF;
         font-size: 2.15rem;
         font-weight: 800;
         margin: 0.2rem 0;
@@ -143,7 +210,7 @@ st.markdown("""
     .kpi-sub {
         font-size: 0.82rem;
         font-weight: 500;
-        color: #64748B;
+        color: #71717A;
     }
     .kpi-sub.up-bad { color: #F87171; font-weight: 700; }
     .kpi-sub.down-good { color: #34D399; font-weight: 700; }
@@ -166,27 +233,27 @@ st.markdown("""
 
     /* Banners Integrados */
     .glass-card {
-        background: #111827;
+        background: #0D0D11;
         border-radius: 14px;
         padding: 1.1rem 1.6rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.7);
         margin-bottom: 1.2rem;
     }
 
-    /* Abas Streamlit Modernas e Arredondadas */
+    /* Abas Streamlit em Preto Ônix */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #111827;
+        background-color: #09090B;
         padding: 6px;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
     }
     .stTabs [data-baseweb="tab"] {
         font-family: 'Outfit', sans-serif;
         border-radius: 8px;
         padding: 8px 16px;
-        color: #94A3B8;
+        color: #A1A1AA;
         font-weight: 600;
         font-size: 0.9rem;
         transition: all 0.2s ease;
@@ -195,22 +262,21 @@ st.markdown("""
         background-color: #2563EB !important;
         color: #FFFFFF !important;
         font-weight: 700;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
     }
 
     /* Caixa do Boletim Oficial */
     .bulletin-box {
-        background: #0B1120;
-        border: 1px solid #1E293B;
+        background: #050507;
+        border: 1px solid #27272A;
         border-left: 4px solid #3B82F6;
         border-radius: 12px;
         padding: 1.4rem;
         font-family: 'JetBrains Mono', Courier, monospace;
         font-size: 0.88rem;
-        color: #E2E8F0;
+        color: #FFFFFF;
         white-space: pre-wrap;
-        line-height: 1.5;
-        box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
     }
 
     /* =========================================================================
@@ -218,60 +284,64 @@ st.markdown("""
        ========================================================================= */
     @media (max-width: 900px) {
         .block-container {
-            padding-top: 0.6rem !important;
+            padding-top: 0.4rem !important;
             padding-bottom: 2rem !important;
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+            padding-left: 0.4rem !important;
+            padding-right: 0.4rem !important;
             max-width: 100% !important;
         }
 
         /* Banner Hero Compacto para Mobile */
         .main-header {
-            padding: 1rem 1.1rem !important;
+            padding: 0.85rem 1rem !important;
             border-radius: 12px !important;
-            margin-bottom: 0.8rem !important;
+            margin-bottom: 0.6rem !important;
         }
         .main-header h1 {
-            font-size: 1.35rem !important;
-            line-height: 1.25 !important;
+            font-size: 1.22rem !important;
+            line-height: 1.2 !important;
         }
         .main-header p {
-            font-size: 0.82rem !important;
+            font-size: 0.76rem !important;
         }
 
-        /* Abas Deslizáveis Horizontalmente no Celular (Carrossel Touch) */
+        /* Abas Deslizáveis Horizontalmente no Celular (Touch Scroll Fluido) */
         .stTabs [data-baseweb="tab-list"] {
             display: flex !important;
             overflow-x: auto !important;
             flex-wrap: nowrap !important;
             -webkit-overflow-scrolling: touch !important;
-            scrollbar-width: thin !important;
-            gap: 4px !important;
-            padding: 4px !important;
+            scrollbar-width: none !important;
+            gap: 6px !important;
+            padding: 5px !important;
             border-radius: 10px !important;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            display: none !important;
         }
         .stTabs [data-baseweb="tab"] {
             flex-shrink: 0 !important;
             white-space: nowrap !important;
-            padding: 6px 12px !important;
-            font-size: 0.8rem !important;
+            padding: 8px 14px !important;
+            font-size: 0.82rem !important;
+            border-radius: 8px !important;
         }
 
-        /* Colunas Responsivas: flexbox adaptativo para telas compactas */
+        /* Colunas Responsivas: ocupação total em celulares estreitos */
         [data-testid="stHorizontalBlock"] {
             flex-wrap: wrap !important;
-            gap: 0.5rem !important;
+            gap: 0.4rem !important;
         }
         [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-            flex: 1 1 calc(50% - 0.5rem) !important;
-            min-width: 140px !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
         }
 
         /* Cards de Métricas (KPIs) Otimizados */
         .kpi-card {
-            padding: 0.85rem 0.95rem !important;
-            border-radius: 10px !important;
-            margin-bottom: 0.5rem !important;
+            padding: 0.85rem 1rem !important;
+            border-radius: 12px !important;
+            margin-bottom: 0.45rem !important;
         }
         .kpi-value {
             font-size: 1.6rem !important;
@@ -281,16 +351,16 @@ st.markdown("""
             font-size: 0.72rem !important;
         }
         .kpi-sub {
-            font-size: 0.75rem !important;
+            font-size: 0.76rem !important;
         }
 
         /* Boletim Oficial e Caixas de Texto */
         .bulletin-box {
-            font-size: 0.78rem !important;
-            padding: 1rem !important;
+            font-size: 0.76rem !important;
+            padding: 0.85rem !important;
         }
         .glass-card {
-            padding: 0.9rem 1rem !important;
+            padding: 0.85rem 1rem !important;
             border-radius: 10px !important;
         }
 
@@ -299,27 +369,40 @@ st.markdown("""
         iframe[title*="google_maps"], 
         .stIFrame,
         [data-testid="stIFrame"] {
-            max-height: 480px !important;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .main-header h1 {
-            font-size: 1.18rem !important;
-        }
-        .main-header p {
-            font-size: 0.78rem !important;
-        }
-        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
-        }
-        .kpi-value {
-            font-size: 1.45rem !important;
+            height: 360px !important;
+            max-height: 360px !important;
+            border-radius: 12px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Forçar Tema Preto Absoluto no DOM da aplicação
+components.html("""
+<script>
+    (function() {
+        const forceDark = function() {
+            try {
+                const doc = window.parent.document;
+                if (doc) {
+                    doc.documentElement.setAttribute('data-theme', 'dark');
+                    doc.documentElement.style.colorScheme = 'dark';
+                    doc.documentElement.style.backgroundColor = '#000000';
+                    if (doc.body) {
+                        doc.body.style.backgroundColor = '#000000';
+                        doc.body.style.color = '#FFFFFF';
+                        doc.body.classList.add('dark');
+                    }
+                }
+            } catch (e) {}
+        };
+        forceDark();
+        setTimeout(forceDark, 200);
+        setTimeout(forceDark, 800);
+        setTimeout(forceDark, 2000);
+    })();
+</script>
+""", height=0, width=0)
 
 
 # ==============================================================================
@@ -346,11 +429,13 @@ def load_base_sinan_data() -> pd.DataFrame:
     """
     df, src_msg = cloud_storage.carregar_base_consolidada()
     if df is not None and not df.empty:
+        df = unidades_saude.enriquecer_dataframe_com_unidades(df)
         return df
 
     # Fallback inicial: compilar das planilhas nativas e persistir na nuvem
     df_init = etl.load_initial_data(os.path.dirname(os.path.abspath(__file__)))
     if df_init is not None and not df_init.empty:
+        df_init = unidades_saude.enriquecer_dataframe_com_unidades(df_init)
         cloud_storage.salvar_base_consolidada(df_init)
     return df_init
 
@@ -441,6 +526,26 @@ def render_google_maps_html(
 
     cases_json = json.dumps(cases_list)
     traps_json = json.dumps(traps_list)
+
+    units_list = []
+    for cnes_code, u_info in unidades_saude.UNIDADES_SAUDE_ITAPORA.items():
+        n_casos = int((df_map["CNES_UNIDADE"] == cnes_code).sum()) if "CNES_UNIDADE" in df_map.columns else 0
+        units_list.append({
+            "cnes": cnes_code,
+            "nome": u_info["nome"],
+            "sigla": u_info["sigla"],
+            "tipo": u_info["tipo"],
+            "endereco": u_info["endereco_completo"],
+            "horario": u_info["horario"],
+            "telefones": u_info["telefones"],
+            "responsavel": u_info["responsavel"],
+            "lat": float(u_info["lat"]),
+            "lng": float(u_info["lon"]),
+            "casos": n_casos,
+            "cor": u_info.get("cor_marcador", "#0284C7")
+        })
+    units_json = json.dumps(units_list)
+
     show_heat_init = "true" if ("Calor" in tipo_visualizacao or "Ambos" in tipo_visualizacao) else "false"
     show_markers_init = "true" if ("Marcadores" in tipo_visualizacao or "Ambos" in tipo_visualizacao) else "false"
 
@@ -474,18 +579,21 @@ def render_google_maps_html(
     <div class="floating-panel">
         <button id="toggleHeat">Calor de Casos</button>
         <button id="toggleMarkers">Casos Clínicos</button>
+        <button id="toggleUnits" style="background:#0284C7;">🏥 Unidades de Saúde ({len(units_list)})</button>
         <button id="toggleTraps" style="background:#10B981;">Ovitrampas (Ovos)</button>
         <span style="color: #94A3B8; font-weight: 600; margin-left: 6px;">Casos: <strong style="color: #38BDF8;">{len(cases_list)}</strong> | Armadilhas: <strong style="color: #10B981;">{len(traps_list)}</strong></span>
     </div>
     <div id="map"></div>
 
     <script>
-        let map, heatmap, markers = [], trapMarkers = [];
+        let map, heatmap, markers = [], trapMarkers = [], unitMarkers = [];
         const casesData = {cases_json};
         const trapsData = {traps_json};
+        const unitsData = {units_json};
         let heatVisible = {show_heat_init};
         let markersVisible = {show_markers_init};
         let trapsVisible = true;
+        let unitsVisible = true;
 
         function initMap() {{
             const itaporaCenter = {{ lat: -22.0803, lng: -54.7892 }};
@@ -563,14 +671,56 @@ def render_google_maps_html(
                 markers.push(marker);
             }});
 
+            // Marcadores de Unidades de Saúde Notificadoras Oficiais (CNES)
+            unitsData.forEach(u => {{
+                const uMarker = new google.maps.Marker({{
+                    position: {{ lat: u.lat, lng: u.lng }},
+                    map: unitsVisible ? map : null,
+                    zIndex: 999,
+                    title: u.nome,
+                    icon: {{
+                        path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z',
+                        scale: 1.6,
+                        fillColor: u.cor || '#0284C7',
+                        fillOpacity: 1.0,
+                        strokeWeight: 2.0,
+                        strokeColor: '#FFFFFF',
+                        anchor: new google.maps.Point(12, 12)
+                    }}
+                }});
+
+                uMarker.addListener('click', () => {{
+                    const content = `
+                        <div style="font-size:12px; line-height:1.45; font-family:'Plus Jakarta Sans',sans-serif; min-width:270px; color:#F8FAFC;">
+                            <div style="background:#1E3A8A; padding:7px 10px; border-radius:6px; margin-bottom:8px; border:1px solid #3B82F6;">
+                                <span style="font-size:10px; text-transform:uppercase; color:#93C5FD; font-weight:700;">🏥 UNIDADE DE SAÚDE • CNES ${{u.cnes}}</span><br>
+                                <strong style="color:#FFFFFF; font-size:13px;">${{u.nome}}</strong>
+                            </div>
+                            <b>Tipo:</b> ${{u.tipo}}<br>
+                            <b>Endereço:</b> <span style="color:#FDE68A; font-weight:600;">${{u.endereco}}</span><br>
+                            <b>Horário:</b> ${{u.horario}}<br>
+                            <b>Telefones:</b> ${{u.telefones}}<br>
+                            <b>Responsável:</b> ${{u.responsavel}}<br>
+                            <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.15); color:#94A3B8;">
+                                Notificações Registradas: <strong style="color:#38BDF8; font-size:14px;">${{u.casos.toLocaleString('pt-BR')}}</strong> casos
+                            </div>
+                        </div>
+                    `;
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, uMarker);
+                }});
+                unitMarkers.push(uMarker);
+            }});
+
             // Marcadores de Ovitrampas (Vigilância Entomológica)
             trapsData.forEach(t => {{
                 const trapMarker = new google.maps.Marker({{
                     position: {{ lat: t.lat, lng: t.lng }},
                     map: trapsVisible ? map : null,
                     icon: {{
-                        path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-                        scale: 6,
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 5,
+                        rotation: 180,
                         fillColor: t.color,
                         fillOpacity: 1.0,
                         strokeWeight: 1.5,
@@ -602,6 +752,12 @@ def render_google_maps_html(
             document.getElementById('toggleMarkers').addEventListener('click', () => {{
                 markersVisible = !markersVisible;
                 markers.forEach(m => m.setMap(markersVisible ? map : null));
+            }});
+
+            document.getElementById('toggleUnits').addEventListener('click', () => {{
+                unitsVisible = !unitsVisible;
+                unitMarkers.forEach(m => m.setMap(unitsVisible ? map : null));
+                document.getElementById('toggleUnits').style.opacity = unitsVisible ? '1' : '0.4';
             }});
 
             document.getElementById('toggleTraps').addEventListener('click', () => {{
@@ -736,6 +892,19 @@ with st.sidebar:
     bairros_unicos = sorted(df_full["NM_BAIRRO_NORM"].dropna().unique()) if not df_full.empty else []
     sel_bairros = st.multiselect("Bairros Específicos", bairros_unicos, default=[])
 
+    # 7. Filtro por Unidade de Saúde Notificadora (CNES)
+    unidades_disponiveis = ["Todas as Unidades"]
+    if not df_full.empty and "NM_UNIDADE_NOTIF" in df_full.columns:
+        unidades_unicas = sorted(df_full["NM_UNIDADE_NOTIF"].dropna().unique().tolist())
+        unidades_disponiveis += unidades_unicas
+
+    sel_unidade = st.selectbox(
+        "Unidade Notificadora (CNES)",
+        unidades_disponiveis,
+        index=0,
+        help="Filtra os casos pelo estabelecimento de saúde (Hospital, ESF, Laboratório) onde a notificação foi emitida."
+    )
+
     st.markdown("---")
     with st.expander("🦟 Conexão Conta-Ovos (Fiocruz)", expanded=False):
         c_token = st.text_input("API Token Conta-Ovos", value=st.session_state["contaovos_token"], type="password", help="Chave de acesso à API https://contaovos.com/pt-br/api/")
@@ -776,6 +945,9 @@ df_filtered = df_filtered[(df_filtered["SE_NUM"] >= se_range[0]) & (df_filtered[
 
 if sel_bairros:
     df_filtered = df_filtered[df_filtered["NM_BAIRRO_NORM"].isin(sel_bairros)]
+
+if sel_unidade != "Todas as Unidades" and "NM_UNIDADE_NOTIF" in df_filtered.columns:
+    df_filtered = df_filtered[df_filtered["NM_UNIDADE_NOTIF"] == sel_unidade]
 
 # Cargas das APIs Externas
 infodengue = load_cached_infodengue()
@@ -1127,6 +1299,32 @@ with tab2:
                     popup=folium.Popup(f"<b>🦟 Ovitrampa: {t['trap_id']}</b><br>Bairro: {t['bairro']}<br>Ovos contados: <b>{ovos}</b>", max_width=250)
                 ).add_to(fmap)
 
+        # Camada de Unidades de Saúde Notificadoras Oficiais de Itaporã
+        for cnes_u, info_u in unidades_saude.UNIDADES_SAUDE_ITAPORA.items():
+            qtd_cnes = int((df_filtered["CNES_UNIDADE"] == cnes_u).sum()) if "CNES_UNIDADE" in df_filtered.columns else 0
+            u_popup = f"""
+            <div style="font-family:'Plus Jakarta Sans',sans-serif; font-size:12px; line-height:1.45; color:#F8FAFC; min-width:260px; background:#0B1120; padding:10px; border-radius:8px;">
+                <div style="background:#1E3A8A; padding:6px 8px; border-radius:6px; margin-bottom:6px; border:1px solid #3B82F6;">
+                    <span style="font-size:10px; color:#93C5FD; font-weight:700;">🏥 UNIDADE DE SAÚDE • CNES {cnes_u}</span><br>
+                    <b style="font-size:13px; color:#FFFFFF;">{info_u['nome']}</b>
+                </div>
+                <b>Tipo:</b> {info_u['tipo']}<br>
+                <b>Endereço:</b> <span style="color:#FDE68A; font-weight:600;">{info_u['endereco_completo']}</span><br>
+                <b>Horário:</b> {info_u['horario']}<br>
+                <b>Telefone:</b> {info_u['telefones']}<br>
+                <b>Responsável:</b> {info_u['responsavel']}<br>
+                <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.15); color:#94A3B8;">
+                    Notificações no filtro: <strong style="color:#38BDF8; font-size:14px;">{qtd_cnes:,}</strong> casos
+                </div>
+            </div>
+            """
+            folium.Marker(
+                location=[info_u["lat"], info_u["lon"]],
+                icon=folium.Icon(color="blue", icon="plus-sign", prefix="glyphicon"),
+                tooltip=f"🏥 {info_u['sigla']} (CNES: {cnes_u})",
+                popup=folium.Popup(u_popup, max_width=320)
+            ).add_to(fmap)
+
         st_folium(fmap, height=map_h, width=None, use_container_width=True)
 
     st.markdown("---")
@@ -1182,6 +1380,103 @@ with tab2:
             xaxis=dict(gridcolor="rgba(255,255,255,0.06)")
         )
         st.plotly_chart(fig_ruas, use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("### 🏥 Rede de Unidades de Saúde Notificadoras (CNES & Endereços)")
+    st.caption("Cadastro Oficial da Gerência Municipal de Saúde de Itaporã/MS: Endereços, Horários de Funcionamento, Telefones, Responsáveis e Distribuição de Notificações SINAN.")
+
+    # KPIs de Unidades de Saúde
+    total_unid_itapora = len(unidades_saude.UNIDADES_SAUDE_ITAPORA)
+    unid_counts = df_filtered["NM_UNIDADE_NOTIF"].value_counts() if not df_filtered.empty and "NM_UNIDADE_NOTIF" in df_filtered.columns else pd.Series()
+    top_unid_nome = unid_counts.index[0] if not unid_counts.empty else "Nenhuma"
+    top_unid_casos = int(unid_counts.iloc[0]) if not unid_counts.empty else 0
+    top_unid_pct = (top_unid_casos / len(df_filtered) * 100.0) if len(df_filtered) > 0 else 0.0
+
+    casos_hosp = int((df_filtered["CNES_UNIDADE"] == "2651505").sum()) if "CNES_UNIDADE" in df_filtered.columns else 0
+    casos_esf = int(len(df_filtered) - casos_hosp)
+
+    u_k1, u_k2, u_k3, u_k4 = st.columns(4)
+    with u_k1:
+        st.markdown(f"""
+        <div class="kpi-card blue">
+            <div class="kpi-title">Rede Municipal Oficial</div>
+            <div class="kpi-value">{total_unid_itapora}</div>
+            <div class="kpi-sub">Unidades Cadastradas CNES</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with u_k2:
+        st.markdown(f"""
+        <div class="kpi-card purple">
+            <div class="kpi-title">Principal Notificadora</div>
+            <div class="kpi-value">{top_unid_casos:,}</div>
+            <div class="kpi-sub" title="{top_unid_nome}">{top_unid_pct:.1f}% ({top_unid_nome[:18]}...)</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with u_k3:
+        st.markdown(f"""
+        <div class="kpi-card red">
+            <div class="kpi-title">Hospital Municipal (24h)</div>
+            <div class="kpi-value">{casos_hosp:,}</div>
+            <div class="kpi-sub">Urgência & Emergência</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with u_k4:
+        st.markdown(f"""
+        <div class="kpi-card green">
+            <div class="kpi-title">Atenção Básica (ESFs)</div>
+            <div class="kpi-value">{casos_esf:,}</div>
+            <div class="kpi-sub">Estratégia Saúde da Família</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col_unid_g, col_unid_t = st.columns([1.2, 1.8])
+    with col_unid_g:
+        st.markdown("##### 📊 Volume de Casos por Estabelecimento Notificador")
+        if not df_filtered.empty and "NM_UNIDADE_NOTIF" in df_filtered.columns:
+            unid_rank = df_filtered["NM_UNIDADE_NOTIF"].value_counts().head(10).reset_index()
+            unid_rank.columns = ["Unidade de Saúde", "Notificações"]
+            fig_unid = px.bar(
+                unid_rank,
+                x="Notificações",
+                y="Unidade de Saúde",
+                orientation="h",
+                color="Notificações",
+                color_continuous_scale="Blues"
+            )
+            fig_unid.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Plus Jakarta Sans", size=11, color="#E2E8F0"),
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=420,
+                yaxis=dict(autorange="reversed"),
+                xaxis=dict(gridcolor="rgba(255,255,255,0.06)")
+            )
+            st.plotly_chart(fig_unid, use_container_width=True)
+        else:
+            st.info("Sem notificações para o filtro aplicado.")
+
+    with col_unid_t:
+        st.markdown("##### 📋 Cadastro Oficial de Unidades de Saúde de Itaporã / MS")
+        cat_df = unidades_saude.obter_catalogo_unidades_itapora_df()
+        if "CNES_UNIDADE" in df_filtered.columns:
+            counts_dict = df_filtered["CNES_UNIDADE"].value_counts().to_dict()
+            cat_df["Casos no Recorte"] = cat_df["CNES"].map(lambda c: counts_dict.get(str(c), 0))
+        else:
+            cat_df["Casos no Recorte"] = 0
+
+        tabela_view = cat_df[[
+            "CNES", "Unidade", "Endereço", "Bairro", "CEP",
+            "Horário de Atendimento", "Telefones", "Responsável", "Casos no Recorte"
+        ]].sort_values("Casos no Recorte", ascending=False)
+
+        st.dataframe(
+            tabela_view,
+            use_container_width=True,
+            height=420,
+            hide_index=True
+        )
 
 
 # ==============================================================================
@@ -1704,6 +1999,10 @@ with tab7:
     bairros_top3 = df_filtered[df_filtered["STATUS_CASO"] == "Confirmado"]["NM_BAIRRO_NORM"].value_counts().head(3).index.tolist()
     bairros_top3_str = ", ".join(bairros_top3) if bairros_top3 else "Sem concentração identificada"
 
+    # Síntese das Unidades Notificadoras
+    unid_top3 = df_filtered["NM_UNIDADE_NOTIF"].value_counts().head(4) if not df_filtered.empty and "NM_UNIDADE_NOTIF" in df_filtered.columns else pd.Series()
+    unid_top_str = "\n".join([f"   - {nome}: {qtd:,} notificações (CNES associado)" for nome, qtd in unid_top3.items()]) if not unid_top3.empty else "   - Nenhuma notificação registrada"
+
     boletim_texto = f"""BOLETIM SEMANAL DE VIGILÂNCIA EPIDEMIOLÓGICA E ENTOMOLÓGICA
 MUNICÍPIO DE ITAPORÃ / MS (CÓDIGO IBGE: 5004301)
 Data de Emissão: {data_hoje} | Semana Epidemiológica de Referência: SE {se_recente:02d}/{ano_recente}
@@ -1735,6 +2034,9 @@ Data de Emissão: {data_hoje} | Semana Epidemiológica de Referência: SE {se_re
    - Bairros de Maior Incidência e Postura: {bairros_top3_str}
    - Ações Prioritárias: Intensificação de visitas domiciliares focais, eliminação mecânica
      de criadouros e bloqueio químico/UBV costal nas ruas prioritárias apontadas na Aba 2.
+
+5. PRINCIPAIS UNIDADES DE SAÚDE NOTIFICADORAS (GERÊNCIA DE SAÚDE DE ITAPORÃ):
+{unid_top_str}
 =========================================================================================
 Secretaria Municipal de Saúde • Vigilância em Saúde Pública de Itaporã/MS
 """
@@ -1753,12 +2055,16 @@ Secretaria Municipal de Saúde • Vigilância em Saúde Pública de Itaporã/MS
     
     col_exp1, col_exp2 = st.columns([3, 1])
     with col_exp1:
+        cols_export_view = [
+            "NU_NOTIFIC", "NU_ANO", "SE_NUM", "DT_NOTIFIC", "AGRAVO_TIPO",
+            "STATUS_CASO", "CLASSI_FIN_DESC", "CNES_UNIDADE", "NM_UNIDADE_NOTIF",
+            "ENDERECO_UNIDADE", "TELEFONE_UNIDADE", "RESPONSAVEL_UNIDADE",
+            "TIPO_VINCULO", "NM_BAIRRO_NORM", "NM_LOGRADO_NORM", "IDADE_ANOS",
+            "SEXO_DESC", "IS_HOSPITALIZADO"
+        ]
+        cols_presentes = [c for c in cols_export_view if c in df_filtered.columns]
         st.dataframe(
-            df_filtered[[
-                "NU_NOTIFIC", "NU_ANO", "SE_NUM", "DT_NOTIFIC", "AGRAVO_TIPO",
-                "STATUS_CASO", "CLASSI_FIN_DESC", "TIPO_VINCULO", "NM_BAIRRO_NORM",
-                "NM_LOGRADO_NORM", "IDADE_ANOS", "SEXO_DESC", "IS_HOSPITALIZADO"
-            ]].head(100),
+            df_filtered[cols_presentes].head(100),
             use_container_width=True,
             height=320
         )
@@ -1776,6 +2082,8 @@ Secretaria Municipal de Saúde • Vigilância em Saúde Pública de Itaporã/MS
         excel_buffer = BytesIO()
         with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
             df_filtered.to_excel(writer, index=False, sheet_name="SINAN_Itapora")
+            cat_unid = unidades_saude.obter_catalogo_unidades_itapora_df()
+            cat_unid.to_excel(writer, index=False, sheet_name="Unidades_Saude_CNES")
             if not contaovos["df_weekly"].empty:
                 contaovos["df_weekly"].to_excel(writer, index=False, sheet_name="ContaOvos_Ovitrampas")
         excel_data = excel_buffer.getvalue()

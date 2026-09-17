@@ -16,6 +16,7 @@ import unicodedata
 from typing import Tuple, List, Optional, Union, Dict, Any
 import numpy as np
 import pandas as pd
+import unidades_saude
 
 POPULACAO_ITAPORA = 24137
 COORD_CENTRAL_ITAPORA = (-22.0803, -54.7892)
@@ -448,9 +449,8 @@ def clean_sinan_df(df: pd.DataFrame, source_filename: str = "") -> pd.DataFrame:
     df["LAT"] = lats
     df["LON"] = lons
     
-    # Coordenadas da Unidade de Notificação (com pequeno jitter de dispersão)
-    df["LAT_NOTIF"] = [round(lat_notif_base + (i % 10 - 5) * 0.0002, 6) for i in range(len(df))]
-    df["LON_NOTIF"] = [round(lon_notif_base + (i % 10 - 5) * 0.0002, 6) for i in range(len(df))]
+    # Enriquecimento com Cadastro Oficial de Unidades de Saúde Notificadoras (CNES, Endereço, Telefones)
+    df = unidades_saude.enriquecer_dataframe_com_unidades(df)
 
     return df
 
