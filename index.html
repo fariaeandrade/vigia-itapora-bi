@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Painel Epidemiológico de Arboviroses | Itaporã - MS</title>
+    <!-- Fontes Modernas Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js para gráficos interativos sem necessidade de servidor Python -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Leaflet CSS & JS para Mapa Territorial Interativo -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #0B1120;
+            color: #F8FAFC;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            line-height: 1.5;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+        }
+        /* Header Hero */
+        .hero {
+            background: linear-gradient(135deg, #0B1120 0%, #111827 50%, #1E1B4B 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38BDF8;
+            border: 1px solid #0284C7;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            background: linear-gradient(90deg, #FFFFFF 0%, #60A5FA 50%, #38BDF8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #94A3B8;
+            font-size: 0.9rem;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* Grid de KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .kpi-card {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .kpi-card.purple { border-left: 4px solid #818CF8; }
+        .kpi-card.red { border-left: 4px solid #EF4444; }
+        .kpi-card.blue { border-left: 4px solid #38BDF8; }
+        .kpi-card.green { border-left: 4px solid #10B981; }
+
+        .kpi-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.72rem;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+        }
+        .kpi-val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #F8FAFC;
+            margin: 2px 0;
+        }
+        .kpi-desc {
+            font-size: 0.72rem;
+            color: #64748B;
+        }
+
+        /* Seções e Cards de Gráficos */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .card {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #F8FAFC;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Mapa */
+        #map {
+            width: 100%;
+            height: 380px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tabela de Top Bairros */
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .rank-table th {
+            text-align: left;
+            color: #94A3B8;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .rank-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #E2E8F0;
+        }
+        .rank-bar {
+            height: 6px;
+            background: #EF4444;
+            border-radius: 3px;
+            margin-top: 4px;
+        }
+
+        /* Banner de Transição para o App Local/Online */
+        .app-banner {
+            background: linear-gradient(135deg, #1E1B4B 0%, #111827 100%);
+            border: 1px solid #3B82F6;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 16px;
+            margin-bottom: 20px;
+        }
+        .app-banner h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            margin-bottom: 6px;
+            color: #FFFFFF;
+        }
+        .app-banner p {
+            color: #94A3B8;
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+        }
+        .btn {
+            display: inline-block;
+            background: #2563EB;
+            color: #FFFFFF;
+            text-decoration: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            font-family: 'Outfit', sans-serif;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #1D4ED8;
+            transform: translateY(-2px);
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748B;
+            padding: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            h1 { font-size: 1.4rem; }
+            #map { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Header -->
+        <div class="hero">
+            <div class="badge">Vigilância Epidemiológica & Entomológica</div>
+            <h1>Plataforma de Arboviroses</h1>
+            <p class="subtitle">Município de Itaporã / MS • Base Consolidada de Dengue e Chikungunya (2023 - 2026)</p>
+        </div>
+
+        <!-- Cards de Métricas Principais -->
+        <div class="kpi-grid">
+            <div class="kpi-card purple">
+                <div class="kpi-title">Total Notificações</div>
+                <div class="kpi-val">5.199</div>
+                <div class="kpi-desc">Casos registrados no SINAN</div>
+            </div>
+            <div class="kpi-card red">
+                <div class="kpi-title">Confirmados</div>
+                <div class="kpi-val">1.465</div>
+                <div class="kpi-desc">Dengue + Chikungunya</div>
+            </div>
+            <div class="kpi-card blue">
+                <div class="kpi-title">Rede Ovitrampas</div>
+                <div class="kpi-val">45</div>
+                <div class="kpi-desc">Pontos Conta-Ovos Fiocruz</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-title">População</div>
+                <div class="kpi-val">24.152</div>
+                <div class="kpi-desc">Itaporã / MS (IBGE)</div>
+            </div>
+        </div>
+
+        <!-- Gráficos Executivos -->
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title">📊 Notificações e Confirmados por Ano</div>
+                <div style="position: relative; height: 260px;">
+                    <canvas id="chartAnos"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">🦟 Distribuição por Agravo</div>
+                <div style="position: relative; height: 260px;">
+                    <canvas id="chartAgravo"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa Territorial e Ranking de Bairros -->
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title">🗺️ Mapa de Foco e Ovitrampas (Itaporã - MS)</div>
+                <div id="map"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">🏆 Top 5 Bairros com Maior Incidência</div>
+                <table class="rank-table">
+                    <thead>
+                        <tr>
+                            <th>Bairro</th>
+                            <th>Confirmados</th>
+                            <th>Proporção</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Centro</strong></td>
+                            <td>347</td>
+                            <td>
+                                23.7%
+                                <div class="rank-bar" style="width: 100%;"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Aldeia</strong></td>
+                            <td>167</td>
+                            <td>
+                                11.4%
+                                <div class="rank-bar" style="width: 48%; background:#F97316;"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Montese</strong></td>
+                            <td>82</td>
+                            <td>
+                                5.6%
+                                <div class="rank-bar" style="width: 24%; background:#F59E0B;"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pioneira</strong></td>
+                            <td>77</td>
+                            <td>
+                                5.3%
+                                <div class="rank-bar" style="width: 22%; background:#10B981;"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Jd. Vitória</strong></td>
+                            <td>69</td>
+                            <td>
+                                4.7%
+                                <div class="rank-bar" style="width: 20%; background:#38BDF8;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Banner com Chamada para o App Completo -->
+        <div class="app-banner">
+            <h3>🚀 Painel Interativo Completo com Predições e 7 Abas</h3>
+            <p>Para upload de novas planilhas em tempo real, modelos preditivos ARIMA e cruzamento meteorológico, execute a aplicação Streamlit.</p>
+            <a href="http://localhost:8501" target="_blank" class="btn">Abrir Painel Streamlit Local (Porta 8501)</a>
+        </div>
+
+        <footer>
+            Prefeitura Municipal de Itaporã / MS • Secretaria Municipal de Saúde • Vigilância em Saúde 2026
+        </footer>
+    </div>
+
+    <!-- Script de Gráficos e Mapa -->
+    <script>
+        // Gráfico de Barras: Anos
+        const ctxAnos = document.getElementById('chartAnos').getContext('2d');
+        new Chart(ctxAnos, {
+            type: 'bar',
+            data: {
+                labels: ['2023', '2024', '2025', '2026'],
+                datasets: [
+                    {
+                        label: 'Total Notificações',
+                        data: [2273, 327, 922, 1677],
+                        backgroundColor: 'rgba(96, 165, 250, 0.4)',
+                        borderColor: '#60A5FA',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Casos Confirmados',
+                        data: [928, 46, 132, 359],
+                        backgroundColor: '#EF4444',
+                        borderColor: '#DC2626',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#94A3B8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94A3B8' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94A3B8' }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Rosca: Agravos
+        const ctxAgravo = document.getElementById('chartAgravo').getContext('2d');
+        new Chart(ctxAgravo, {
+            type: 'doughnut',
+            data: {
+                labels: ['Dengue (3.862)', 'Chikungunya (1.337)'],
+                datasets: [{
+                    data: [3862, 1337],
+                    backgroundColor: ['#EF4444', '#818CF8'],
+                    borderColor: '#111827',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94A3B8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+
+        // Mapa Leaflet de Itaporã
+        const map = L.map('map').setView([-22.0803, -54.7892], 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CartoDB',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Pontos de Referência e Ovitrampas em Itaporã
+        const pontos = [
+            { nome: 'Centro (Foco Histórico)', lat: -22.0803, lon: -54.7892, ovos: 142, cor: '#EF4444' },
+            { nome: 'Pioneira (Ovitrampa 04)', lat: -22.0735, lon: -54.7820, ovos: 95, cor: '#F97316' },
+            { nome: 'Jardim Vitória (Ovitrampa 12)', lat: -22.0890, lon: -54.7950, ovos: 64, cor: '#F59E0B' },
+            { nome: 'Montese (Ovitrampa 18)', lat: -22.0845, lon: -54.7760, ovos: 38, cor: '#10B981' },
+            { nome: 'Santa Maria (Ovitrampa 22)', lat: -22.0710, lon: -54.7980, ovos: 25, cor: '#10B981' }
+        ];
+
+        pontos.forEach(p => {
+            const circle = L.circleMarker([p.lat, p.lon], {
+                radius: 8,
+                fillColor: p.cor,
+                color: '#FFFFFF',
+                weight: 1.5,
+                opacity: 1,
+                fillOpacity: 0.85
+            }).addTo(map);
+            circle.bindPopup(`<strong>${p.nome}</strong><br>Ovos contados: <b>${p.ovos}</b>`);
+        });
+    </script>
+</body>
+</html>

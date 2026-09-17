@@ -1,0 +1,8 @@
+# Arquivos ignorados no deploy da Vercel
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.crdownload
+scratch/
+.tmp/

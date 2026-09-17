@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: painel-arboviroses-itapora
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: GOOGLE_MAPS_API_KEY
+        value: AIzaSyDoqwDBVxGLuy8HU75MPGqLWu9cWw4mjjw
